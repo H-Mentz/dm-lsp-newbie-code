@@ -1,0 +1,60 @@
+from lsst.daf.persistence import Butler
+import numpy as np
+import lsst.afw.display as afwDisplay 
+import matplotlib.pyplot as plt 
+import lsst.ip.isr as isr
+afwDisplay.setDefaultBackend('matplotlib')
+
+def bias_isr(raw, overscan_correct=True):
+    raw_clone = raw.clone()
+    task = isr.isrTask.IsrTask() 
+    task.config.doAssembleCcd = True
+    task.assembleCcd.config.doTrim = True
+    task.config.overscanFitType = 'MEDIAN_PER_ROW'
+    task.config.doOverscan = overscan_correct
+    task.config.doBias = False
+    task.config.doLinearize = False
+    task.config.doDark = False
+    task.config.doFlat = False
+    task.config.doDefect = False
+    assembled = task.run(raw_clone).exposure
+    return assembled.getImage()
+    
+repo = '/lsstdata/offline/teststand/BOT/gen2repo/'
+butler = Butler(repo) 
+run = '6790D'
+raftName = 'R01'
+detectorName = 'S00'
+imageType = 'FLAT'
+dataId = dict(detectorName=detectorName, run=run, imageType=imageType, raftName=raftName)
+print(dataId, dataId["detectorName"])
+
+fig = plt.figure(figsize=(40, 40)) 
+afw_display = afwDisplay.Display()
+afw_display.scale('linear', 'zscale')   
+afw_display.setImageColormap('gist_heat')
+afw_display.mtv(im, None)
+fig.patch.set_facecolor('white') 
+plt.show()    
+
+expIds = butler.queryMetadata('raw', 'visit', dataId=dataId) 
+expIds;
+
+expId = expIds[0] 
+dataId['visit'] = expId
+butler.get('raw', dataId)
+.getImage().getArray()
+
+im = bias_isr(butler.get())
+
+expIds = butler.queryMetadata('raw', 'visit', dataId=dataId) 
+expIds;
+expId = expIds[0] 
+dataId['visit'] = expId
+exp = butler.get('raw', dataId)
+im = bias_isr(exp) 
+bias_isr(raw, overscan_correct=True)
+butler.get('raw', overscan_correct)
+plt.show()
+
+
